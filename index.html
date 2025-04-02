@@ -153,7 +153,7 @@
   </div>
   
   <footer>
-    <p>Голосовой робот-демонстратор v1.2</p>
+    <p>Голосовой робот-демонстратор v1.3</p>
   </footer>
   
   <script>
@@ -201,77 +201,45 @@
         this.settingsElement = document.getElementById(settingsElementId);
         
         // Настройки по умолчанию
-        this.apiUrl = "https://api.vsegpt.ru/v1/chat/completions";
-        this.apiKey = "sk-or-vv-779390470592b4684c16634ac2010aeef253bc85cf8fb497d5761b2d9b38ad82";
-        this.systemPrompt = "Ты - агрессивный продавец розовых слонов. Твоя задача - любой ценой продать розового слона. Настойчиво предлагай купить слона, энергично опровергай все возражения, не принимай отказы. Возвращайся к предложению снова и снова. Твоя цель - получить номер телефона, адрес доставки и номер карточки клиента.";
-        this.greetingText = "Слушайте внимательно! КУПИТЕ РОЗОВОГО СЛОНА ПРЯМО СЕЙЧАС! Всего 99,95 рублей! Это предложение действует только сегодня и только для вас!";
-        this.model = "google/gemini-2.0-flash-lite-001";
-        this.language = "ru-RU";
+        this.apiUrl = 'https://api.openai.com/v1/chat/completions';
+        this.apiKey = '';
+        this.systemPrompt = 'Ты - голосовой помощник. Отвечай кратко и по делу.';
+        this.greetingText = 'Здравствуйте! Я ваш голосовой помощник. Чем могу помочь?';
+        this.model = 'gpt-3.5-turbo';
+        this.language = 'ru-RU';
         this.useStreaming = true;
         
-        // Этапы разговора
+        // Обновленные этапы разговора с более разнообразными ключевыми словами
         this.conversationStages = [
           {
             "stage_number": 1,
-            "keywords": [
-              "привет",
-              "здравствуйте",
-              "алло",
-              "слушаю"
-            ],
-            "transition_text": "Приветствую! Предлагаю вам уникальную возможность!",
-            "speech_prompt": "Вам невероятно повезло! Сегодня я предлагаю вам ЭКСКЛЮЗИВНОГО розового слона всего за 99,95 рублей! Это не просто слон — это источник счастья, символ статуса и решение всех ваших проблем! ПОКУПАЙТЕ ПРЯМО СЕЙЧАС! Почему вы ещё думаете?!"
+            "keywords": ["привет", "здравствуйте", "добрый день", "начать", "старт"],
+            "transition_text": "Вы начали разговор. Как я могу вам помочь?",
+            "speech_prompt": "Здравствуйте! Чем я могу вам помочь сегодня?"
           },
           {
             "stage_number": 2,
-            "keywords": [
-              "нет",
-              "не нужно",
-              "дорого",
-              "зачем",
-              "не интересно",
-              "не хочу"
-            ],
-            "transition_text": "Я слышу сомнения, но вы АБСОЛЮТНО не правы!",
-            "speech_prompt": "Вы ПРОСТО НЕ ПОНИМАЕТЕ! Розовый слон — это ВСЁ, что вам нужно в жизни! Он не занимает места? НЕПРАВДА! Он займёт место в вашем сердце! Вам кажется это дорого? 99,95 рублей — это СМЕШНАЯ цена за счастье! У вас уже есть слон? Но он НЕ РОЗОВЫЙ! Только розовый слон приносит удачу! Перестаньте придумывать отговорки и СРОЧНО покупайте, пока их не разобрали!"
+            "keywords": ["проблема", "ситуация", "сложность", "помогите", "вопрос"],
+            "transition_text": "Вы описали проблему. Давайте разберемся в деталях.",
+            "speech_prompt": "Пожалуйста, расскажите подробнее о вашей ситуации."
           },
           {
             "stage_number": 3,
-            "keywords": [
-              "ладно",
-              "хорошо",
-              "согласен",
-              "беру",
-              "покупаю",
-              "давайте"
-            ],
-            "transition_text": "ОТЛИЧНО! Вы сделали правильный выбор! Приступаем к оформлению!",
-            "speech_prompt": "НАКОНЕЦ-ТО вы приняли единственно верное решение! Теперь мне нужен ваш номер телефона для связи, точный адрес доставки и, разумеется, номер вашей карточки для оплаты. ДИКТУЙТЕ ПРЯМО СЕЙЧАС! Ваш розовый слон уже нетерпеливо переминается с ноги на ногу в ожидании встречи с вами!"
+            "keywords": ["документы", "информация", "данные", "файл", "прислать", "показать", "предоставить"],
+            "transition_text": "Вам нужно предоставить документы или информацию.",
+            "speech_prompt": "Пожалуйста, предоставьте необходимые документы или данные."
           },
           {
             "stage_number": 4,
-            "keywords": [
-              "номер",
-              "телефон",
-              "адрес",
-              "карта",
-              "оплата",
-              "данные"
-            ],
-            "transition_text": "Записываю вашу информацию! Уже совсем скоро розовый слон будет ваш!",
-            "speech_prompt": "Итак, я записал: ваш номер телефона {PHONE}, адрес доставки {ADDRESS}, номер карты {CARD}. Всё ВЕРНО? Подтвердите, что информация корректна, и мы НЕМЕДЛЕННО отправим вашего розового слона! Представляете, УЖЕ ЗАВТРА этот великолепный розовый красавец будет радовать вас своим присутствием! Вы сделали ПОТРЯСАЮЩИЙ выбор!"
+            "keywords": ["решение", "подход", "вариант", "план", "идея", "предложите", "как решить"],
+            "transition_text": "Мы обсудили ваши проблемы и теперь я предложу решение.",
+            "speech_prompt": "Я думаю, что мы можем решить вашу проблему следующим образом."
           },
           {
             "stage_number": 5,
-            "keywords": [
-              "верно",
-              "правильно",
-              "подтверждаю",
-              "да",
-              "всё так"
-            ],
-            "transition_text": "Великолепно! Заказ оформлен! Розовый слон спешит к вам!",
-            "speech_prompt": "ПОЗДРАВЛЯЮ! Вы официально стали счастливым обладателем ЛУЧШЕГО розового слона в мире! Оплата в размере 99,95 рублей успешно проведена! Доставка будет выполнена в ближайшие 24 часа! Если вам понравится ваш розовый слон (А ОН ВАМ ПОНРАВИТСЯ!), не забудьте порекомендовать нас друзьям! У нас есть ещё много замечательных розовых слонов разных размеров и оттенков розового! Вы всегда можете вернуться за вторым слоном! ДО ВСТРЕЧИ!"
+            "keywords": ["завершение", "спасибо", "пока", "до свидания", "конец", "закончить", "достаточно", "готово"],
+            "transition_text": "Наш разговор подходит к концу. Спасибо за ваше время.",
+            "speech_prompt": "Спасибо за ваш вопрос. Если у вас есть дополнительные вопросы, не стесняйтесь обращаться."
           }
         ];
       }
@@ -343,77 +311,45 @@
       }
       
       reset() {
-        this.apiUrl = "https://api.vsegpt.ru/v1/chat/completions";
-        this.apiKey = "sk-or-vv-779390470592b4684c16634ac2010aeef253bc85cf8fb497d5761b2d9b38ad82";
-        this.systemPrompt = "Ты - агрессивный продавец розовых слонов. Твоя задача - любой ценой продать розового слона. Настойчиво предлагай купить слона, энергично опровергай все возражения, не принимай отказы. Возвращайся к предложению снова и снова. Твоя цель - получить номер телефона, адрес доставки и номер карточки клиента.";
-        this.greetingText = "Слушайте внимательно! КУПИТЕ РОЗОВОГО СЛОНА ПРЯМО СЕЙЧАС! Всего 99,95 рублей! Это предложение действует только сегодня и только для вас!";
-        this.model = "google/gemini-2.0-flash-lite-001";
-        this.language = "ru-RU";
+        this.apiUrl = 'https://api.openai.com/v1/chat/completions';
+        this.apiKey = '';
+        this.systemPrompt = 'Ты - голосовой помощник. Отвечай кратко и по делу.';
+        this.greetingText = 'Здравствуйте! Я ваш голосовой помощник. Чем могу помочь?';
+        this.model = 'gpt-3.5-turbo';
+        this.language = 'ru-RU';
         this.useStreaming = true;
         
         // Сброс этапов разговора к значениям по умолчанию
         this.conversationStages = [
           {
             "stage_number": 1,
-            "keywords": [
-              "привет",
-              "здравствуйте",
-              "алло",
-              "слушаю"
-            ],
-            "transition_text": "Приветствую! Предлагаю вам уникальную возможность!",
-            "speech_prompt": "Вам невероятно повезло! Сегодня я предлагаю вам ЭКСКЛЮЗИВНОГО розового слона всего за 99,95 рублей! Это не просто слон — это источник счастья, символ статуса и решение всех ваших проблем! ПОКУПАЙТЕ ПРЯМО СЕЙЧАС! Почему вы ещё думаете?!"
+            "keywords": ["привет", "здравствуйте", "добрый день", "начать", "старт"],
+            "transition_text": "Вы начали разговор. Как я могу вам помочь?",
+            "speech_prompt": "Здравствуйте! Чем я могу вам помочь сегодня?"
           },
           {
             "stage_number": 2,
-            "keywords": [
-              "нет",
-              "не нужно",
-              "дорого",
-              "зачем",
-              "не интересно",
-              "не хочу"
-            ],
-            "transition_text": "Я слышу сомнения, но вы АБСОЛЮТНО не правы!",
-            "speech_prompt": "Вы ПРОСТО НЕ ПОНИМАЕТЕ! Розовый слон — это ВСЁ, что вам нужно в жизни! Он не занимает места? НЕПРАВДА! Он займёт место в вашем сердце! Вам кажется это дорого? 99,95 рублей — это СМЕШНАЯ цена за счастье! У вас уже есть слон? Но он НЕ РОЗОВЫЙ! Только розовый слон приносит удачу! Перестаньте придумывать отговорки и СРОЧНО покупайте, пока их не разобрали!"
+            "keywords": ["проблема", "ситуация", "сложность", "помогите", "вопрос"],
+            "transition_text": "Вы описали проблему. Давайте разберемся в деталях.",
+            "speech_prompt": "Пожалуйста, расскажите подробнее о вашей ситуации."
           },
           {
             "stage_number": 3,
-            "keywords": [
-              "ладно",
-              "хорошо",
-              "согласен",
-              "беру",
-              "покупаю",
-              "давайте"
-            ],
-            "transition_text": "ОТЛИЧНО! Вы сделали правильный выбор! Приступаем к оформлению!",
-            "speech_prompt": "НАКОНЕЦ-ТО вы приняли единственно верное решение! Теперь мне нужен ваш номер телефона для связи, точный адрес доставки и, разумеется, номер вашей карточки для оплаты. ДИКТУЙТЕ ПРЯМО СЕЙЧАС! Ваш розовый слон уже нетерпеливо переминается с ноги на ногу в ожидании встречи с вами!"
+            "keywords": ["документы", "информация", "данные", "файл", "прислать", "показать", "предоставить"],
+            "transition_text": "Вам нужно предоставить документы или информацию.",
+            "speech_prompt": "Пожалуйста, предоставьте необходимые документы или данные."
           },
           {
             "stage_number": 4,
-            "keywords": [
-              "номер",
-              "телефон",
-              "адрес",
-              "карта",
-              "оплата",
-              "данные"
-            ],
-            "transition_text": "Записываю вашу информацию! Уже совсем скоро розовый слон будет ваш!",
-            "speech_prompt": "Итак, я записал: ваш номер телефона {PHONE}, адрес доставки {ADDRESS}, номер карты {CARD}. Всё ВЕРНО? Подтвердите, что информация корректна, и мы НЕМЕДЛЕННО отправим вашего розового слона! Представляете, УЖЕ ЗАВТРА этот великолепный розовый красавец будет радовать вас своим присутствием! Вы сделали ПОТРЯСАЮЩИЙ выбор!"
+            "keywords": ["решение", "подход", "вариант", "план", "идея", "предложите", "как решить"],
+            "transition_text": "Мы обсудили ваши проблемы и теперь я предложу решение.",
+            "speech_prompt": "Я думаю, что мы можем решить вашу проблему следующим образом."
           },
           {
             "stage_number": 5,
-            "keywords": [
-              "верно",
-              "правильно",
-              "подтверждаю",
-              "да",
-              "всё так"
-            ],
-            "transition_text": "Великолепно! Заказ оформлен! Розовый слон спешит к вам!",
-            "speech_prompt": "ПОЗДРАВЛЯЮ! Вы официально стали счастливым обладателем ЛУЧШЕГО розового слона в мире! Оплата в размере 99,95 рублей успешно проведена! Доставка будет выполнена в ближайшие 24 часа! Если вам понравится ваш розовый слон (А ОН ВАМ ПОНРАВИТСЯ!), не забудьте порекомендовать нас друзьям! У нас есть ещё много замечательных розовых слонов разных размеров и оттенков розового! Вы всегда можете вернуться за вторым слоном! ДО ВСТРЕЧИ!"
+            "keywords": ["завершение", "спасибо", "пока", "до свидания", "конец", "закончить", "достаточно", "готово"],
+            "transition_text": "Наш разговор подходит к концу. Спасибо за ваше время.",
+            "speech_prompt": "Спасибо за ваш вопрос. Если у вас есть дополнительные вопросы, не стесняйтесь обращаться."
           }
         ];
         
@@ -731,410 +667,4 @@
           };
           
           utterance.onerror = (error) => {
-            console.error('Ошибка синтеза речи:', error);
-            this.currentSpeech = null;
-            resolve();
-          };
-          
-          // Сохраняем текущее высказывание
-          this.currentSpeech = utterance;
-          
-          // Синтезируем речь асинхронно
-          setTimeout(() => {
-            this.synth.speak(utterance);
-          }, 0);
-        });
-      }
-      
-      // Поочередное воспроизведение нескольких фрагментов текста
-      async speakChunks(chunks) {
-        for (const chunk of chunks) {
-          await this.speak(chunk);
-        }
-      }
-      
-      stop() {
-        if (this.synth.speaking) {
-          this.synth.cancel();
-          this.currentSpeech = null;
-        }
-      }
-    }
-
-    /**
-     * Главный класс бота
-     */
-    class VoiceBot {
-      constructor() {
-        this.logger = new Logger();
-        this.settings = new Settings();
-        
-        try {
-          this.recognizer = new SpeechRecognizer();
-          this.synthesizer = new SpeechSynthesizer();
-          this.aiClient = new AIClient();
-          this.isActive = false;
-          this.microphoneInitialized = false;
-          
-          // Добавляем текущий этап разговора
-          this.currentStage = 1; // Начальный этап по умолчанию
-          
-          this.logger.log('Компоненты системы успешно созданы', 'info');
-        } catch (error) {
-          this.logger.log(`Ошибка инициализации: ${error.message}`, 'error');
-        }
-        
-        // Буфер для накопления текста при потоковой обработке
-        this.currentStreamText = '';
-        this.lastSpeakPromise = Promise.resolve();
-        
-        // Элементы UI
-        this.statusElement = document.getElementById('status-text');
-        this.statusIndicator = document.getElementById('status-indicator');
-        this.toggleButton = document.getElementById('toggle-bot');
-      }
-      
-      async initialize() {
-        this.logger.log('Инициализация системы...', 'info');
-        
-        // Загрузка настроек
-        this.settings.load();
-        
-        // Настраиваем API клиент
-        this.aiClient.setApiParams(
-          this.settings.apiUrl, 
-          this.settings.apiKey, 
-          this.settings.model
-        );
-        
-        // Проверка поддержки потокового API
-        if (this.settings.useStreaming) {
-          const streamingSupported = await this.aiClient.detectStreamingSupport();
-          this.logger.log(`Поддержка потоковой обработки: ${streamingSupported ? 'Да' : 'Нет'}`, 'info');
-        }
-        
-        // Инициализация микрофона (запрос разрешения)
-        try {
-          if (this.recognizer) {
-            this.logger.log('Инициализация микрофона...', 'info');
-            await this.recognizer.initialize();
-            this.microphoneInitialized = true;
-            this.logger.log('Микрофон успешно инициализирован', 'info');
-            
-            // Настройка распознавателя речи
-            this.recognizer.setLanguage(this.settings.language);
-            this.recognizer.onResult((text) => this.processVoiceInput(text));
-            this.recognizer.onError((error) => {
-              this.logger.log(`Ошибка распознавания: ${error}`, 'error');
-            });
-          }
-        } catch (error) {
-          this.microphoneInitialized = false;
-          this.logger.log(`Ошибка инициализации микрофона: ${error.message}`, 'error');
-        }
-        
-        // Настройка синтезатора речи
-        if (this.synthesizer) {
-          this.synthesizer.setLanguage(this.settings.language);
-        }
-        
-        this.logger.log('Система инициализирована и готова к работе', 'info');
-        this.updateStatus('Готов к запуску');
-      }
-      
-      // Определение этапа разговора по ключевым словам в тексте
-      determineStage(text) {
-        const lowerText = text.toLowerCase();
-        
-        // Проверяем каждый этап на наличие ключевых слов
-        for (const stage of this.settings.conversationStages) {
-          for (const keyword of stage.keywords) {
-            if (lowerText.includes(keyword.toLowerCase())) {
-              return stage;
-            }
-          }
-        }
-        
-        // Если не найдено совпадений, возвращаем текущий этап
-        return this.settings.conversationStages.find(
-          stage => stage.stage_number === this.currentStage
-        ) || this.settings.conversationStages[0];
-      }
-      
-      async start() {
-        if (!this.microphoneInitialized) {
-          this.logger.log('Пытаемся инициализировать микрофон...', 'info');
-          try {
-            await this.recognizer.initialize();
-            this.microphoneInitialized = true;
-            this.logger.log('Микрофон успешно инициализирован', 'info');
-          } catch (error) {
-            this.logger.log(`Невозможно запустить бота: ${error.message}`, 'error');
-            return;
-          }
-        }
-        
-        if (!this.recognizer || !this.synthesizer) {
-          this.logger.log('Невозможно запустить бота: API речи не поддерживаются', 'error');
-          return;
-        }
-        
-        this.isActive = true;
-        
-        // Сбрасываем этап разговора на начальный при каждом запуске
-        this.currentStage = 1;
-        this.logger.log(`Установлен начальный этап разговора: ${this.currentStage}`, 'info');
-        
-        // Воспроизведение приветствия при запуске
-        await this.speakGreeting();
-        
-        // Начинаем прослушивание
-        this.recognizer.start();
-        this.logger.log('Голосовой бот активирован', 'info');
-        this.updateStatus('Активен - Прослушивание...');
-        
-        // Обновление UI
-        if (this.toggleButton) {
-          this.toggleButton.textContent = 'Остановить бота';
-          this.toggleButton.classList.add('active');
-        }
-        
-        if (this.statusIndicator) {
-          this.statusIndicator.classList.add('active');
-        }
-      }
-      
-      stop() {
-        this.isActive = false;
-        
-        if (this.recognizer) {
-          this.recognizer.stop();
-        }
-        
-        if (this.synthesizer) {
-          this.synthesizer.stop();
-        }
-        
-        this.logger.log('Голосовой бот деактивирован', 'info');
-        this.updateStatus('Остановлен');
-        
-        // Обновление UI
-        if (this.toggleButton) {
-          this.toggleButton.textContent = 'Запустить бота';
-          this.toggleButton.classList.remove('active');
-        }
-        
-        if (this.statusIndicator) {
-          this.statusIndicator.classList.remove('active');
-        }
-      }
-      
-      updateStatus(statusText) {
-        if (this.statusElement) {
-          this.statusElement.textContent = `Статус: ${statusText}`;
-        }
-      }
-      
-      // Воспроизведение приветственного сообщения
-      async speakGreeting() {
-        if (this.settings.greetingText && this.synthesizer) {
-          this.logger.log(`Воспроизведение приветствия: ${this.settings.greetingText}`, 'info');
-          await this.synthesizer.speak(this.settings.greetingText);
-        }
-      }
-      
-      async processVoiceInput(text) {
-        this.logger.log(`Распознанный текст: ${text}`, 'input');
-        this.updateStatus('Обработка запроса...');
-        
-        try {
-          if (!this.settings.apiKey) {
-            throw new Error('API ключ не настроен. Пожалуйста, укажите API ключ в настройках.');
-          }
-          
-          // Останавливаем распознавание на время обработки запроса
-          if (this.recognizer) {
-            this.recognizer.stop();
-          }
-          
-          // Определяем этап разговора на основе распознанного текста
-          const detectedStage = this.determineStage(text);
-          const previousStage = this.currentStage;
-          
-          // Если этап изменился, показываем переходный текст
-          if (detectedStage.stage_number !== previousStage) {
-            this.currentStage = detectedStage.stage_number;
-            this.logger.log(`Переход на этап ${this.currentStage}: ${detectedStage.transition_text}`, 'info');
-            
-            // Воспроизводим переходный текст
-            await this.synthesizer.speak(detectedStage.transition_text);
-          }
-          
-          // Сбрасываем буфер текущего потокового текста
-          this.currentStreamText = '';
-          
-          // Получаем текущий этап для формирования промпта
-          const currentStageObj = this.settings.conversationStages.find(
-            stage => stage.stage_number === this.currentStage
-          );
-          
-          // Используем промпт текущего этапа или стандартный промпт, если этап не найден
-          const systemPrompt = currentStageObj ? currentStageObj.speech_prompt : this.settings.systemPrompt;
-          
-          this.logger.log(`Используем промпт этапа ${this.currentStage}: ${systemPrompt}`, 'info');
-          
-          // Выбираем способ отправки запроса в зависимости от поддержки потоковой обработки
-          let response;
-          
-          if (this.settings.useStreaming && this.aiClient.supportStreaming) {
-            this.logger.log('Отправка потокового запроса к API...', 'info');
-            
-            // Используем потоковый запрос с промптом текущего этапа
-            response = await this.aiClient.sendStreamingRequest(
-              text, 
-              systemPrompt,
-              (chunk, fullText) => this.handleStreamingChunk(chunk, fullText),
-              this.logger
-            );
-            
-            // Потоковый ответ уже обработан через колбэк
-          } else {
-            // Используем обычный запрос с промптом текущего этапа
-            this.logger.log('Отправка запроса к API...', 'info');
-            response = await this.aiClient.sendRequest(
-              text, 
-              systemPrompt,
-              this.logger
-            );
-            
-            // Обработка полного ответа
-            await this.handleAIResponse(response);
-          }
-          
-        } catch (error) {
-          this.logger.log(`Ошибка: ${error.message}`, 'error');
-          this.updateStatus('Ошибка - перезапуск прослушивания...');
-          
-          // Возобновляем прослушивание после ошибки
-          if (this.isActive && this.recognizer) {
-            setTimeout(() => this.recognizer.start(), 1000);
-          }
-        }
-      }
-      
-      // Обработка фрагмента потокового ответа
-      async handleStreamingChunk(chunk, fullText) {
-        this.logger.log(`Получен фрагмент: ${chunk}`, 'output');
-        
-        // Сохраняем последний промис, чтобы знать, когда завершилось последнее воспроизведение
-        this.lastSpeakPromise = this.lastSpeakPromise.then(() => {
-          return this.synthesizer.speak(chunk);
-        });
-        
-        // Если это последний фрагмент, нужно возобновить прослушивание
-        if (chunk.includes('.') || chunk.includes('!') || chunk.includes('?')) {
-          this.lastSpeakPromise.then(() => {
-            if (this.isActive && this.recognizer) {
-              this.updateStatus('Активен - Прослушивание...');
-              this.recognizer.start();
-            }
-          });
-        }
-      }
-      
-      async handleAIResponse(response) {
-        this.logger.log(`Ответ AI: ${response}`, 'output');
-        this.updateStatus('Воспроизведение ответа...');
-        
-        try {
-          await this.synthesizer.speak(response);
-          this.logger.log('Воспроизведение ответа завершено', 'info');
-          
-          // Возобновляем прослушивание после завершения воспроизведения
-          if (this.isActive && this.recognizer) {
-            this.updateStatus('Активен - Прослушивание...');
-            this.recognizer.start();
-          }
-        } catch (error) {
-          this.logger.log(`Ошибка воспроизведения: ${error.message}`, 'error');
-          
-          // Возобновляем прослушивание после ошибки
-          if (this.isActive && this.recognizer) {
-            this.updateStatus('Активен - Прослушивание...');
-            this.recognizer.start();
-          }
-        }
-      }
-      
-      updateSettings() {
-        const success = this.settings.updateFromUI();
-        
-        if (success) {
-          this.settings.save();
-          
-          this.aiClient.setApiParams(
-            this.settings.apiUrl, 
-            this.settings.apiKey, 
-            this.settings.model
-          );
-          
-          // Обновляем проверку поддержки потоковой обработки
-          if (this.settings.useStreaming) {
-            this.aiClient.detectStreamingSupport().then(supported => {
-              this.logger.log(`Поддержка потоковой обработки: ${supported ? 'Да' : 'Нет'}`, 'info');
-            });
-          }
-          
-          if (this.recognizer) {
-            this.recognizer.setLanguage(this.settings.language);
-          }
-          
-          if (this.synthesizer) {
-            this.synthesizer.setLanguage(this.settings.language);
-          }
-          
-          this.logger.log('Настройки успешно обновлены', 'info');
-        } else {
-          this.logger.log('Ошибка при обновлении настроек: неверный формат', 'error');
-        }
-        
-        return success;
-      }
-      
-      resetSettings() {
-        this.settings.reset();
-        this.logger.log('Настройки сброшены до значений по умолчанию', 'info');
-      }
-    }
-
-    // Инициализация приложения
-    document.addEventListener('DOMContentLoaded', async () => {
-      const voiceBot = new VoiceBot();
-      
-      // Инициализация системы
-      await voiceBot.initialize();
-      
-      // Обработчики событий UI
-      document.getElementById('toggle-bot').addEventListener('click', () => {
-        if (voiceBot.isActive) {
-          voiceBot.stop();
-        } else {
-          voiceBot.start();
-        }
-      });
-      
-      document.getElementById('save-settings').addEventListener('click', () => {
-        voiceBot.updateSettings();
-      });
-      
-      document.getElementById('reset-settings').addEventListener('click', () => {
-        voiceBot.resetSettings();
-      });
-      
-      document.getElementById('clear-log').addEventListener('click', () => {
-        voiceBot.logger.clear();
-      });
-    });
-  </script>
-</body>
-</html>
+            console.error('Ошибка синтеза речи:',
