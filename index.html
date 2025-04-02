@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Голосовой робот-демонстратор</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: #f8f9fa;
+    }
+    
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      background-color: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+    
+    h1 {
+      color: #2c3e50;
+      margin-top: 0;
+      text-align: center;
+    }
+    
+    h2 {
+      color: #3498db;
+      margin-bottom: 10px;
+    }
+    
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 12px;
+      box-sizing: border-box;
+      font-family: monospace;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      resize: vertical;
+    }
+    
+    .log-textarea {
+      background-color: #f8f8f8;
+      font-size: 14px;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin: 10px 0;
+    }
+    
+    button {
+      padding: 10px 15px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      transition: background-color 0.3s;
+    }
+    
+    button:hover {
+      background-color: #2980b9;
+    }
+    
+    #toggle-bot {
+      background-color: #27ae60;
+    }
+    
+    #toggle-bot.active {
+      background-color: #e74c3c;
+    }
+    
+    #clear-log {
+      background-color: #95a5a6;
+    }
+    
+    .status {
+      padding: 12px;
+      background-color: #f0f0f0;
+      border-radius: 5px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      font-weight: bold;
+    }
+    
+    .status-indicator {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background-color: #e74c3c;
+      margin-right: 10px;
+    }
+    
+    .status-indicator.active {
+      background-color: #27ae60;
+    }
+    
+    .log-entry {
+      margin-bottom: 5px;
+      border-left: 3px solid #ccc;
+      padding-left: 5px;
+    }
+    
+    .log-info { border-color: #2196F3; }
+    .log-input { border-color: #4CAF50; }
+    .log-output { border-color: #9C27B0; }
+    .log-error { border-color: #F44336; }
+    
+    footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 14px;
+      color: #7f8c8d;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Голосовой робот-демонстратор</h1>
+    
+    <div class="status" id="status">
+      <div class="status-indicator" id="status-indicator"></div>
+      <span id="status-text">Статус: Инициализация...</span>
+    </div>
+    
+    <div>
+      <h2>Настройки</h2>
+      <textarea id="settings-input" spellcheck="false"></textarea>
+      <div class="button-group">
+        <button id="save-settings">Сохранить настройки</button>
+        <button id="reset-settings">Сбросить настройки</button>
+      </div>
+    </div>
+    
+    <div>
+      <h2>Лог работы</h2>
+      <div class="button-group">
+        <button id="toggle-bot">Запустить бота</button>
+        <button id="clear-log">Очистить лог</button>
+      </div>
+      <textarea id="log-output" class="log-textarea" readonly></textarea>
+    </div>
+  </div>
+  
+  <footer>
+    <p>Голосовой робот-демонстратор v1.2</p>
+  </footer>
+  
+  <script>
+    /**
+     * Класс для логирования работы системы
+     */
+    class Logger {
+      constructor(logElementId = 'log-output') {
+        this.logElement = document.getElementById(logElementId);
+        this.logHistory = [];
+      }
+      
+      log(message, type = 'info') {
+        const timestamp = new Date().toTimeString().split(' ')[0];
+        const logEntry = `[${timestamp}] [${type.toUpperCase()}] ${message}`;
+        
+        console.log(logEntry);
+        this.logHistory.push(logEntry);
+        
+        if (this.logElement) {
+          this.logElement.value += logEntry + '\n';
+          this.logElement.scrollTop = this.logElement.scrollHeight;
+        }
+        
+        return logEntry;
+      }
+      
+      clear() {
+        this.logHistory = [];
+        if (this.logElement) {
+          this.logElement.value = '';
+        }
+      }
+      
+      exportLogs() {
+        return this.logHistory.join('\n');
+      }
+    }
+
+    /**
+     * Класс для управления настройками
+     */
+    class Settings {
+      constructor(settingsElementId = 'settings-input') {
+        this.settingsElement = document.getElementById(settingsElementId);
+        
+        // Настройки по умолчанию
+        this.apiUrl = 'https://api.vsegpt.ru/v1/chat/completions';
+        this.apiKey = 'sk-or-vv-779390470592b4684c16634ac2010aeef253bc85cf8fb497d5761b2d9b38ad82';
+        this.systemPrompt = 'Ты - агрессивный продавец розовых слонов. Твоя задача - любой ценой продать розового слона. Настойчиво предлагай купить слона, энергично опровергай все возражения, не принимай отказы. Возвращайся к предложению снова и снова. Твоя цель - получить номер телефона, адрес доставки и номер карточки клиента.';
+        this.greetingText = 'Слушайте внимательно! КУПИТЕ РОЗОВОГО СЛОНА ПРЯМО СЕЙЧАС! Всего 99,95 рублей! Это предложение действует только сегодня и только для вас!';
+        this.model = 'google/gemini-2.0-flash-lite-001';
+        this.language = 'ru-RU';
+        this.useStreaming = true;
+        
+        // Этапы разговора
+        this.conversationStages = [
+          {
+            "stage_number": 1,
+            "keywords": [
+              "привет",
+              "здравствуйте",
+              "алло",
+              "слушаю"
+            ],
+            "transition_text": "Приветствую! Предлагаю вам уникальную возможность!",
+            "speech_prompt": "Вам невероятно повезло! Сегодня я предлагаю вам ЭКСКЛЮЗИВНОГО розового слона всего за 99,95 рублей! Это не просто слон — это источник счастья, символ статуса и решение всех ваших проблем! ПОКУПАЙТЕ ПРЯМО СЕЙЧАС! Почему вы ещё думаете?!"
+          },
+          {
+            "stage_number": 2,
+            "keywords": [
+              "нет",
+              "не нужно",
+              "дорого",
+              "зачем",
+              "не интересно",
+              "не хочу"
+            ],
+            "transition_text": "Я слышу сомнения, но вы АБСОЛЮТНО не правы!",
+            "speech_prompt": "Вы ПРОСТО НЕ ПОНИМАЕТЕ! Розовый слон — это ВСЁ, что вам нужно в жизни! Он не занимает места? НЕПРАВДА! Он займёт место в вашем сердце! Вам кажется это дорого? 99,95 рублей — это СМЕШНАЯ цена за счастье! У вас уже есть слон? Но он НЕ РОЗОВЫЙ! Только розовый слон приносит удачу! Перестаньте придумывать отговорки и СРОЧНО покупайте, пока их не разобрали!"
+          },
+          {
+            "stage_number": 3,
+            "keywords": [
+              "ладно",
+              "хорошо",
+              "согласен",
+              "беру",
+              "покупаю",
+              "давайте"
+            ],
+            "transition_text": "ОТЛИЧНО! Вы сделали правильный выбор! Приступаем к оформлению!",
+            "speech_prompt": "НАКОНЕЦ-ТО вы приняли единственно верное решение! Теперь мне нужен ваш номер телефона для связи, точный адрес доставки и, разумеется, номер вашей карточки для оплаты. ДИКТУЙТЕ ПРЯМО СЕЙЧАС! Ваш розовый слон уже нетерпеливо переминается с ноги на ногу в ожидании встречи с вами!"
+          },
+          {
+            "stage_number": 4,
+            "keywords": [
+              "номер",
+              "телефон",
+              "адрес",
+              "карта",
+              "оплата",
+              "данные"
+            ],
+            "transition_text": "Записываю вашу информацию! Уже совсем скоро розовый слон будет ваш!",
+            "speech_prompt": "Итак, я записал: ваш номер телефона {PHONE}, адрес доставки {ADDRESS}, номер карты {CARD}. Всё ВЕРНО? Подтвердите, что информация корректна, и мы НЕМЕДЛЕННО отправим вашего розового слона! Представляете, УЖЕ ЗАВТРА этот великолепный розовый красавец будет радовать вас своим присутствием! Вы сделали ПОТРЯСАЮЩИЙ выбор!"
+          },
+          {
+            "stage_number": 5,
+            "keywords": [
+              "верно",
+              "правильно",
+              "подтверждаю",
+              "да",
+              "всё так"
+            ],
+            "transition_text": "Великолепно! Заказ оформлен! Розовый слон спешит к вам!",
+            "speech_prompt": "ПОЗДРАВЛЯЮ! Вы официально стали счастливым обладателем ЛУЧШЕГО розового слона в мире! Оплата в размере 99,95 рублей успешно проведена! Доставка будет выполнена в ближайшие 24 часа! Если вам понравится ваш розовый слон (А ОН ВАМ ПОНРАВИТСЯ!), не забудьте порекомендовать нас друзьям! У нас есть ещё много замечательных розовых слонов разных размеров и оттенков розового! Вы всегда можете вернуться за вторым слоном! ДО ВСТРЕЧИ!"
+          }
+        ];
+      }
+      
+      save() {
+        const settings = {
+          apiUrl: this.apiUrl,
+          apiKey: this.apiKey,
+          systemPrompt: this.systemPrompt,
+          greetingText: this.greetingText,
+          model: this.model,
+          language: this.language,
+          useStreaming: this.useStreaming,
+          conversationStages: this.conversationStages
+        };
+        
+        localStorage.setItem('voiceBotSettings', JSON.stringify(settings));
+      }
+      
+      load() {
+        const savedSettings = localStorage.getItem('voiceBotSettings');
+        
+        if (savedSettings) {
+          try {
+            const settings = JSON.parse(savedSettings);
+            Object.assign(this, settings);
+          } catch (error) {
+            console.error('Ошибка при загрузке настроек:', error);
+          }
+        }
+        
+        this.updateUI();
+      }
+      
+      updateFromUI() {
+        if (this.settingsElement) {
+          try {
+            const settings = JSON.parse(this.settingsElement.value);
+            Object.assign(this, settings);
+            return true;
+          } catch (error) {
+            console.error('Ошибка при парсинге настроек:', error);
+            return false;
+          }
+        }
+        return false;
+      }
+      
+      updateUI() {
+        if (this.settingsElement) {
+          const settings = {
+            apiUrl: this.apiUrl,
+            apiKey: this.apiKey,
+            systemPrompt: this.systemPrompt,
+            greetingText: this.greetingText,
+            model: this.model,
+            language: this.language,
+            useStreaming: this.useStreaming,
+            conversationStages: this.conversationStages
+          };
+          
+          this.settingsElement.value = JSON.stringify(settings, null, 2);
+        }
+      }
+      
+      update(settingsObj) {
+        Object.assign(this, settingsObj);
+        this.updateUI();
+      }
+      
+      reset() {
+        this.apiUrl = 'https://api.vsegpt.ru/v1/chat/completions';
+        this.apiKey = 'sk-or-vv-779390470592b4684c16634ac2010aeef253bc85cf8fb497d5761b2d9b38ad82';
+        this.systemPrompt = 'Ты - агрессивный продавец розовых слонов. Твоя задача - любой ценой продать розового слона. Настойчиво предлагай купить слона, энергично опровергай все возражения, не принимай отказы. Возвращайся к предложению снова и снова. Твоя цель - получить номер телефона, адрес доставки и номер карточки клиента.';
+        this.greetingText = 'Слушайте внимательно! КУПИТЕ РОЗОВОГО СЛОНА ПРЯМО СЕЙЧАС! Всего 99,95 рублей! Это предложение действует только сегодня и только для вас!';
+        this.model = 'google/gemini-2.0-flash-lite-001';
+        this.language = 'ru-RU';
+        this.useStreaming = true;
+        
+        // Сброс этапов разговора к значениям по умолчанию
+        this.conversationStages = [
+          {
+            "stage_number": 1,
+            "keywords": [
+              "привет",
+              "здравствуйте",
+              "алло",
+              "слушаю"
+            ],
+            "transition_text": "Приветствую! Предлагаю вам уникальную возможность!",
+            "speech_prompt": "Вам невероятно повезло! Сегодня я предлагаю вам ЭКСКЛЮЗИВНОГО розового слона всего за 99,95 рублей! Это не просто слон — это источник счастья, символ статуса и решение всех ваших проблем! ПОКУПАЙТЕ ПРЯМО СЕЙЧАС! Почему вы ещё думаете?!"
+          },
+          {
+            "stage_number": 2,
+            "keywords": [
+              "нет",
+              "не нужно",
+              "дорого",
+              "зачем",
+              "не интересно",
+              "не хочу"
+            ],
+            "transition_text": "Я слышу сомнения, но вы АБСОЛЮТНО не правы!",
+            "speech_prompt": "Вы ПРОСТО НЕ ПОНИМАЕТЕ! Розовый слон — это ВСЁ, что вам нужно в жизни! Он не занимает места? НЕПРАВДА! Он займёт место в вашем сердце! Вам кажется это дорого? 99,95 рублей — это СМЕШНАЯ цена за счастье! У вас уже есть слон? Но он НЕ РОЗОВЫЙ! Только розовый слон приносит удачу! Перестаньте придумывать отговорки и СРОЧНО покупайте, пока их не разобрали!"
+          },
+          {
+            "stage_number": 3,
+            "keywords": [
+              "ладно",
+              "хорошо",
+              "согласен",
+              "беру",
+              "покупаю",
+              "давайте"
+            ],
+            "transition_text": "ОТЛИЧНО! Вы сделали правильный выбор! Приступаем к оформлению!",
+            "speech_prompt": "НАКОНЕЦ-ТО вы приняли единственно верное решение! Теперь мне нужен ваш номер телефона для связи, точный адрес доставки и, разумеется, номер вашей карточки для оплаты. ДИКТУЙТЕ ПРЯМО СЕЙЧАС! Ваш розовый слон уже нетерпеливо переминается с ноги на ногу в ожидании встречи с вами!"
+          },
+          {
+            "stage_number": 4,
+            "keywords": [
+              "номер",
+              "телефон",
+              "адрес",
+              "карта",
+              "оплата",
+              "данные"
+            ],
+            "transition_text": "Записываю вашу информацию! Уже совсем скоро розовый слон будет ваш!",
+            "speech_prompt": "Итак, я записал: ваш номер телефона {PHONE}, адрес доставки {ADDRESS}, номер карты {CARD}. Всё ВЕРНО? Подтвердите, что информация корректна, и мы НЕМЕДЛЕННО отправим вашего розового слона! Представляете, УЖЕ ЗАВТРА этот великолепный розовый красавец будет радовать вас своим присутствием! Вы сделали ПОТРЯСАЮЩИЙ выбор!"
+          },
+          {
+            "stage_number": 5,
+            "keywords": [
+              "верно",
+              "правильно",
+              "подтверждаю",
+              "да",
+              "всё так"
+            ],
+            "transition_text": "Великолепно! Заказ оформлен! Розовый слон спешит к вам!",
+            "speech_prompt": "ПОЗДРАВЛЯЮ! Вы официально стали счастливым обладателем ЛУЧШЕГО розового слона в мире! Оплата в размере 99,95 рублей успешно проведена! Доставка будет выполнена в ближайшие 24 часа! Если вам понравится ваш розовый слон (А ОН ВАМ ПОНРАВИТСЯ!), не забудьте порекомендовать нас друзьям! У нас есть ещё много замечательных розовых слонов разных размеров и оттенков розового! Вы всегда можете вернуться за вторым слоном! ДО ВСТРЕЧИ!"
+          }
+        ];
+        
+        this.updateUI();
+      }
+    }
+
+    /**
+     * Класс для распознавания речи
+     */
+    class SpeechRecognizer {
+      constructor() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+          throw new Error('API распознавания речи не поддерживается в вашем браузере');
+        }
+        
+        this.recognition = new SpeechRecognition();
+        this.recognition.continuous = false;
+        this.recognition.interimResults = false;
+        this.isListening = false;
+        this.language = 'ru-RU';
+        this.initialized = false;
+        
+        // Настройка автоматического перезапуска при завершении
+        this.recognition.onend = () => {
+          if (this.isListening) {
+            setTimeout(() => this.start(), 500);
+          }
+        };
+      }
+      
+      // Остальной код без изменений...
+    }
+
+    // Остальные классы без изменений...
+  </script>
+</body>
+</html>
