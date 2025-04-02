@@ -153,7 +153,7 @@
   </div>
   
   <footer>
-    <p>Голосовой робот-демонстратор v1.3</p>
+    <p>Голосовой робот-демонстратор v1.4</p>
   </footer>
   
   <script>
@@ -234,6 +234,10 @@
         this.language = 'ru-RU';
         this.useStreaming = true;
         
+        // Периодические фразы во время ожидания
+        this.waitingPhrases = ["слушаю", "пупу", "слоники"];
+        this.waitingInterval = 30000; // 30 секунд
+        
         // Обновленные этапы разговора с более разнообразными ключевыми словами
         this.conversationStages = [
           {
@@ -280,6 +284,8 @@
           model: this.model,
           language: this.language,
           useStreaming: this.useStreaming,
+          waitingPhrases: this.waitingPhrases,
+          waitingInterval: this.waitingInterval,
           conversationStages: this.conversationStages
         };
         
@@ -337,6 +343,8 @@
             model: this.model,
             language: this.language,
             useStreaming: this.useStreaming,
+            waitingPhrases: this.waitingPhrases,
+            waitingInterval: this.waitingInterval,
             conversationStages: this.conversationStages
           };
           
@@ -365,6 +373,10 @@
         this.model = 'gpt-3.5-turbo';
         this.language = 'ru-RU';
         this.useStreaming = true;
+        
+        // Сброс периодических фраз
+        this.waitingPhrases = ["слушаю", "пупу", "слоники"];
+        this.waitingInterval = 30000; // 30 секунд
         
         // Сброс этапов разговора к значениям по умолчанию
         this.conversationStages = [
@@ -424,11 +436,48 @@
         this.isListening = false;
         this.language = 'ru-RU';
         this.initialized = false;
+        this._shouldBeListening = false; // Флаг желаемого состояния
+        this.onErrorCallback = null;
         
         // Настройка автоматического перезапуска при завершении
         this.recognition.onend = () => {
-          if (this.isListening) {
-            setTimeout(() => this.start(), 500);
+          debugLog("Сеанс распознавания завершился");
+          // Сбрасываем флаг, так как сеанс завершился
+          this.isListening = false;
+          
+          // Если бот должен продолжать слушать, запускаем новый сеанс
+          if (this._shouldBeListening) {
+            debugLog("Автоматический перезапуск распознавания после onend");
+            setTimeout(() => {
+              if (this._shouldBeListening) {
+                this.start();
+              }
+            }, 300);
+          }
+        };
+        
+        // Настройка обработки ошибок с автоматическим перезапуском
+        this.recognition.onerror = (event) => {
+          if (this.onErrorCallback) {
+            this.onErrorCallback(event.error);
+          }
+          
+          if (event.error === 'no-speech') {
+            // При отсутствии речи перезапускаем без лишних логов
+            debugLog("Ошибка 'no-speech' - перезапуск распознавания");
+            setTimeout(() => {
+              if (this._shouldBeListening) {
+                this.start();
+              }
+            }, 300);
+          } else {
+            // Прочие ошибки тоже обрабатываем
+            errorLog(`Ошибка распознавания: ${event.error}`);
+            setTimeout(() => {
+              if (this._shouldBeListening) {
+                this.start();
+              }
+            }, 1000);
           }
         };
         
@@ -464,6 +513,9 @@
           throw new Error(errorMsg);
         }
         
+        // Устанавливаем флаг, что бот должен слушать
+        this._shouldBeListening = true;
+        
         if (!this.isListening) {
           debugLog("Запуск распознавания речи...");
           this.recognition.lang = this.language;
@@ -474,7 +526,12 @@
             debugLog("Распознавание речи успешно запущено");
           } catch (error) {
             errorLog(`Ошибка при запуске распознавания речи: ${error.message}`);
-            throw error;
+            // Попробуем перезапустить через небольшую задержку
+            setTimeout(() => {
+              if (this._shouldBeListening) {
+                this.start();
+              }
+            }, 1000);
           }
         } else {
           debugLog("Распознаватель речи уже активен");
@@ -482,6 +539,9 @@
       }
       
       stop() {
+        // Сначала устанавливаем флаг, что бот не должен больше слушать
+        this._shouldBeListening = false;
+        
         if (this.isListening) {
           debugLog("Остановка распознавания речи...");
           
@@ -515,10 +575,7 @@
       
       onError(callback) {
         debugLog("Настройка обработчика ошибок распознавания...");
-        this.recognition.onerror = (event) => {
-          errorLog(`Ошибка распознавания: ${event.error}`);
-          callback(event.error);
-        };
+        this.onErrorCallback = callback;
         debugLog("Обработчик ошибок настроен");
       }
     }
@@ -900,6 +957,11 @@
           // Добавляем текущий этап разговора
           this.currentStage = 1; // Начальный этап по умолчанию
           
+          // Добавляем таймер для периодического произношения фраз
+          this.waitingPhrasesTimer = null;
+          this.isWaiting = false;
+          this.lastActivityTime = Date.now();
+          
           this.logger.log('Компоненты системы успешно созданы', 'info');
         } catch (error) {
           errorLog(`Ошибка при создании компонентов бота: ${error.message}`);
@@ -916,6 +978,59 @@
         this.toggleButton = document.getElementById('toggle-bot');
         
         debugLog("Экземпляр голосового бота создан");
+      }
+      
+      // Метод для запуска таймера периодического произношения
+      startWaitingPhrases() {
+        debugLog("Запуск таймера периодического произношения фраз...");
+        if (this.waitingPhrasesTimer) {
+          clearInterval(this.waitingPhrasesTimer);
+        }
+        
+        this.isWaiting = true;
+        this.lastActivityTime = Date.now();
+        
+        this.waitingPhrasesTimer = setInterval(() => {
+          // Проверяем, прошло ли достаточно времени с последней активности
+          const inactiveTime = Date.now() - this.lastActivityTime;
+          
+          if (this.isWaiting && this.isActive && inactiveTime >= this.settings.waitingInterval) {
+            // Выбираем случайную фразу из списка
+            const randomIndex = Math.floor(Math.random() * this.settings.waitingPhrases.length);
+            const phrase = this.settings.waitingPhrases[randomIndex];
+            
+            this.logger.log(`Произношение периодической фразы: ${phrase}`, 'info');
+            
+            // Временно приостанавливаем распознавание, чтобы не слышать себя
+            if (this.recognizer) {
+              this.recognizer.stop();
+            }
+            
+            // Произносим фразу и затем возобновляем распознавание
+            this.synthesizer.speak(phrase).then(() => {
+              if (this.isActive && this.recognizer) {
+                setTimeout(() => {
+                  this.recognizer.start();
+                }, 300);
+              }
+            });
+            
+            // Обновляем время последней активности
+            this.lastActivityTime = Date.now();
+          }
+        }, 5000); // Проверяем каждые 5 секунд
+        
+        debugLog("Таймер периодических фраз запущен");
+      }
+      
+      stopWaitingPhrases() {
+        debugLog("Остановка таймера периодических фраз...");
+        if (this.waitingPhrasesTimer) {
+          clearInterval(this.waitingPhrasesTimer);
+          this.waitingPhrasesTimer = null;
+        }
+        this.isWaiting = false;
+        debugLog("Таймер периодических фраз остановлен");
       }
       
       async initialize() {
@@ -958,7 +1073,7 @@
               this.recognizer.setLanguage(this.settings.language);
               this.recognizer.onResult((text) => this.processVoiceInput(text));
               this.recognizer.onError((error) => {
-                this.logger.log(`Ошибка распознавания: ${error}`, 'error');
+                this.handleRecognitionError(error);
               });
               this.logger.log('Распознаватель речи настроен', 'info');
             } else {
@@ -985,6 +1100,17 @@
           errorLog(`Ошибка при инициализации бота: ${error.message}`);
           this.logger.log(`Ошибка инициализации: ${error.message}`, 'error');
           this.updateStatus('Ошибка инициализации');
+        }
+      }
+      
+      // Улучшенная обработка ошибок распознавания
+      handleRecognitionError(error) {
+        if (error === 'no-speech') {
+          // Для ошибки отсутствия речи просто делаем запись, без аварийных сообщений
+          // Распознаватель перезапустится автоматически
+          this.logger.log('Не обнаружена речь, продолжаю слушать...', 'info');
+        } else {
+          this.logger.log(`Ошибка распознавания: ${error}`, 'error');
         }
       }
       
@@ -1047,6 +1173,9 @@
         this.currentStage = 1;
         this.logger.log(`Установлен начальный этап разговора: ${this.currentStage}`, 'info');
         
+        // Запуск таймера периодических фраз
+        this.startWaitingPhrases();
+        
         // Воспроизведение приветствия при запуске
         debugLog("Воспроизведение приветствия...");
         await this.speakGreeting();
@@ -1073,6 +1202,9 @@
       stop() {
         debugLog("Остановка голосового бота...");
         this.isActive = false;
+        
+        // Останавливаем таймер периодических фраз
+        this.stopWaitingPhrases();
         
         if (this.recognizer) {
           this.recognizer.stop();
@@ -1116,6 +1248,12 @@
       }
       
       async processVoiceInput(text) {
+        // Обновляем время последней активности
+        this.lastActivityTime = Date.now();
+        
+        // Приостанавливаем ожидающие фразы (чтобы не прерывать разговор)
+        this.isWaiting = false;
+        
         this.logger.log(`Распознанный текст: ${text}`, 'input');
         this.updateStatus('Обработка запроса...');
         
@@ -1141,6 +1279,9 @@
                   this.currentStage = requestedStage;
                   this.logger.log(`Принудительный переход на этап ${requestedStage}: ${stageObj.transition_text}`, 'info');
                   await this.synthesizer.speak(stageObj.transition_text);
+                  
+                  // Возобновляем ожидающие фразы и распознавание
+                  this.isWaiting = true;
                   
                   if (this.isActive && this.recognizer) {
                     this.updateStatus('Активен - Прослушивание...');
@@ -1206,9 +1347,15 @@
             await this.handleAIResponse(response);
           }
           
+          // Возобновляем ожидающие фразы
+          this.isWaiting = true;
+          
         } catch (error) {
           this.logger.log(`Ошибка: ${error.message}`, 'error');
           this.updateStatus('Ошибка - перезапуск прослушивания...');
+          
+          // Возобновляем ожидающие фразы
+          this.isWaiting = true;
           
           // Возобновляем прослушивание после ошибки
           if (this.isActive && this.recognizer) {
@@ -1310,7 +1457,7 @@
       
       try {
         // Отображаем версию в консоли
-        console.log("Голосовой робот-демонстратор v1.3 запущен");
+        console.log("Голосовой робот-демонстратор v1.4 запущен");
         
         // Создаем экземпляр голосового бота
         debugLog("Создание экземпляра VoiceBot");
