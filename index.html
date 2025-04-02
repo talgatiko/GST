@@ -157,13 +157,37 @@
   </footer>
   
   <script>
+    // Добавление глобальных функций логирования для отладки
+    function debugLog(message) {
+      console.log(`[DEBUG] ${message}`);
+      const logElement = document.getElementById('log-output');
+      if (logElement) {
+        logElement.value += `[DEBUG] ${message}\n`;
+        logElement.scrollTop = logElement.scrollHeight;
+      }
+    }
+
+    function errorLog(message) {
+      console.error(`[ERROR] ${message}`);
+      const logElement = document.getElementById('log-output');
+      if (logElement) {
+        logElement.value += `[ERROR] ${message}\n`;
+        logElement.scrollTop = logElement.scrollHeight;
+      }
+    }
+
+    // Начало инициализации
+    debugLog("Приложение запускается...");
+    
     /**
      * Класс для логирования работы системы
      */
     class Logger {
       constructor(logElementId = 'log-output') {
+        debugLog("Инициализация логгера...");
         this.logElement = document.getElementById(logElementId);
         this.logHistory = [];
+        debugLog("Логгер создан");
       }
       
       log(message, type = 'info') {
@@ -198,6 +222,7 @@
      */
     class Settings {
       constructor(settingsElementId = 'settings-input') {
+        debugLog("Инициализация настроек...");
         this.settingsElement = document.getElementById(settingsElementId);
         
         // Настройки по умолчанию
@@ -242,9 +267,11 @@
             "speech_prompt": "Спасибо за ваш вопрос. Если у вас есть дополнительные вопросы, не стесняйтесь обращаться."
           }
         ];
+        debugLog("Настройки по умолчанию созданы");
       }
       
       save() {
+        debugLog("Сохранение настроек в localStorage...");
         const settings = {
           apiUrl: this.apiUrl,
           apiKey: this.apiKey,
@@ -256,32 +283,43 @@
           conversationStages: this.conversationStages
         };
         
-        localStorage.setItem('voiceBotSettings', JSON.stringify(settings));
+        try {
+          localStorage.setItem('voiceBotSettings', JSON.stringify(settings));
+          debugLog("Настройки успешно сохранены");
+        } catch (error) {
+          errorLog(`Ошибка при сохранении настроек: ${error.message}`);
+        }
       }
       
       load() {
+        debugLog("Загрузка настроек из localStorage...");
         const savedSettings = localStorage.getItem('voiceBotSettings');
         
         if (savedSettings) {
           try {
             const settings = JSON.parse(savedSettings);
             Object.assign(this, settings);
+            debugLog("Настройки успешно загружены из localStorage");
           } catch (error) {
-            console.error('Ошибка при загрузке настроек:', error);
+            errorLog(`Ошибка при загрузке настроек: ${error.message}`);
           }
+        } else {
+          debugLog("Сохраненные настройки не найдены, используются значения по умолчанию");
         }
         
         this.updateUI();
       }
       
       updateFromUI() {
+        debugLog("Обновление настроек из пользовательского интерфейса...");
         if (this.settingsElement) {
           try {
             const settings = JSON.parse(this.settingsElement.value);
             Object.assign(this, settings);
+            debugLog("Настройки успешно обновлены из UI");
             return true;
           } catch (error) {
-            console.error('Ошибка при парсинге настроек:', error);
+            errorLog(`Ошибка при парсинге настроек: ${error.message}`);
             return false;
           }
         }
@@ -289,6 +327,7 @@
       }
       
       updateUI() {
+        debugLog("Обновление UI настроек...");
         if (this.settingsElement) {
           const settings = {
             apiUrl: this.apiUrl,
@@ -301,7 +340,14 @@
             conversationStages: this.conversationStages
           };
           
-          this.settingsElement.value = JSON.stringify(settings, null, 2);
+          try {
+            this.settingsElement.value = JSON.stringify(settings, null, 2);
+            debugLog("UI настроек успешно обновлен");
+          } catch (error) {
+            errorLog(`Ошибка при обновлении UI настроек: ${error.message}`);
+          }
+        } else {
+          errorLog("Элемент настроек не найден в DOM");
         }
       }
       
@@ -311,6 +357,7 @@
       }
       
       reset() {
+        debugLog("Сброс настроек на значения по умолчанию...");
         this.apiUrl = 'https://api.openai.com/v1/chat/completions';
         this.apiKey = '';
         this.systemPrompt = 'Ты - голосовой помощник. Отвечай кратко и по делу.';
@@ -354,6 +401,7 @@
         ];
         
         this.updateUI();
+        debugLog("Настройки успешно сброшены до значений по умолчанию");
       }
     }
 
@@ -362,9 +410,12 @@
      */
     class SpeechRecognizer {
       constructor() {
+        debugLog("Инициализация распознавателя речи...");
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
-          throw new Error('API распознавания речи не поддерживается в вашем браузере');
+          const errorMsg = 'API распознавания речи не поддерживается в вашем браузере';
+          errorLog(errorMsg);
+          throw new Error(errorMsg);
         }
         
         this.recognition = new SpeechRecognition();
@@ -380,58 +431,95 @@
             setTimeout(() => this.start(), 500);
           }
         };
+        
+        debugLog("Распознаватель речи создан успешно");
       }
       
       // Метод, который инициализирует микрофон только один раз
       async initialize() {
-        if (this.initialized) return;
+        debugLog("Начало инициализации микрофона...");
+        if (this.initialized) {
+          debugLog("Микрофон уже инициализирован");
+          return;
+        }
         
         try {
           // Запрашиваем доступ к микрофону один раз
+          debugLog("Запрос разрешения на доступ к микрофону...");
           await navigator.mediaDevices.getUserMedia({ audio: true });
           this.initialized = true;
+          debugLog("Доступ к микрофону получен успешно");
           return true;
         } catch (error) {
-          console.error('Ошибка при доступе к микрофону:', error);
-          throw new Error(`Не удалось получить доступ к микрофону: ${error.message}`);
+          const errorMsg = `Не удалось получить доступ к микрофону: ${error.message}`;
+          errorLog(errorMsg);
+          throw new Error(errorMsg);
         }
       }
       
       start() {
         if (!this.initialized) {
-          throw new Error('Микрофон не инициализирован. Вызовите initialize() сначала.');
+          const errorMsg = 'Микрофон не инициализирован. Вызовите initialize() сначала.';
+          errorLog(errorMsg);
+          throw new Error(errorMsg);
         }
         
         if (!this.isListening) {
+          debugLog("Запуск распознавания речи...");
           this.recognition.lang = this.language;
-          this.recognition.start();
-          this.isListening = true;
+          
+          try {
+            this.recognition.start();
+            this.isListening = true;
+            debugLog("Распознавание речи успешно запущено");
+          } catch (error) {
+            errorLog(`Ошибка при запуске распознавания речи: ${error.message}`);
+            throw error;
+          }
+        } else {
+          debugLog("Распознаватель речи уже активен");
         }
       }
       
       stop() {
         if (this.isListening) {
-          this.recognition.stop();
-          this.isListening = false;
+          debugLog("Остановка распознавания речи...");
+          
+          try {
+            this.recognition.stop();
+            this.isListening = false;
+            debugLog("Распознавание речи остановлено");
+          } catch (error) {
+            errorLog(`Ошибка при остановке распознавания речи: ${error.message}`);
+          }
+        } else {
+          debugLog("Распознаватель речи уже неактивен");
         }
       }
       
       setLanguage(lang) {
+        debugLog(`Установка языка распознавания: ${lang}`);
         this.language = lang;
       }
       
       onResult(callback) {
+        debugLog("Настройка обработчика результатов распознавания...");
         this.recognition.onresult = (event) => {
           const last = event.results.length - 1;
           const text = event.results[last][0].transcript;
+          debugLog(`Распознанный текст: "${text}"`);
           callback(text);
         };
+        debugLog("Обработчик результатов настроен");
       }
       
       onError(callback) {
+        debugLog("Настройка обработчика ошибок распознавания...");
         this.recognition.onerror = (event) => {
+          errorLog(`Ошибка распознавания: ${event.error}`);
           callback(event.error);
         };
+        debugLog("Обработчик ошибок настроен");
       }
     }
 
@@ -440,13 +528,16 @@
      */
     class AIClient {
       constructor(apiUrl = '', apiKey = '', model = 'gpt-3.5-turbo') {
+        debugLog("Инициализация AI клиента...");
         this.apiUrl = apiUrl;
         this.apiKey = apiKey;
         this.model = model;
         this.supportStreaming = false;
+        debugLog("AI клиент создан успешно");
       }
       
       setApiParams(url, key, model) {
+        debugLog(`Настройка параметров API: URL=${url}, модель=${model}`);
         this.apiUrl = url;
         this.apiKey = key;
         this.model = model || 'gpt-3.5-turbo';
@@ -454,7 +545,9 @@
       
       // Определить поддержку потоковой передачи
       async detectStreamingSupport() {
+        debugLog("Проверка поддержки потоковой передачи...");
         if (!this.apiUrl || !this.apiKey) {
+          debugLog("API URL или ключ не настроены, потоковая передача отключена");
           this.supportStreaming = false;
           return false;
         }
@@ -462,22 +555,25 @@
         try {
           // Проверка на поддержку fetch API с потоками
           if (!window.ReadableStream || !window.Response || !Response.prototype.body) {
+            debugLog("Браузер не поддерживает ReadableStream, потоковая передача отключена");
             this.supportStreaming = false;
             return false;
           }
           
           // Проверяем, использует ли URL OpenAI API (они точно поддерживают streaming)
           if (this.apiUrl.includes('api.openai.com')) {
+            debugLog("Обнаружен API OpenAI, потоковая передача включена");
             this.supportStreaming = true;
             return true;
           }
           
           // Для других API можно сделать тестовый запрос
           // Но во избежание лишних запросов, просто предполагаем поддержку
+          debugLog("Предполагаем поддержку потоковой передачи для стороннего API");
           this.supportStreaming = true;
           return true;
         } catch (error) {
-          console.error('Ошибка при определении поддержки потоковой передачи:', error);
+          errorLog(`Ошибка при определении поддержки потоковой передачи: ${error.message}`);
           this.supportStreaming = false;
           return false;
         }
@@ -485,6 +581,7 @@
       
       // Обычный запрос
       async sendRequest(text, systemPrompt, logger) {
+        debugLog("Отправка стандартного запроса к API...");
         const requestBody = {
           model: this.model,
           messages: [
@@ -499,6 +596,7 @@
         }
         
         try {
+          debugLog("Выполнение запроса...");
           const response = await fetch(this.apiUrl, {
             method: 'POST',
             headers: {
@@ -510,16 +608,21 @@
           
           if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`API ответил с кодом: ${response.status}, ${errorText}`);
+            const errorMsg = `API ответил с кодом: ${response.status}, ${errorText}`;
+            errorLog(errorMsg);
+            throw new Error(errorMsg);
           }
           
+          debugLog("Запрос выполнен успешно, обработка ответа...");
           const data = await response.json();
           
           if (logger) {
             logger.log(`Полученный ответ API: ${JSON.stringify(data)}`, 'info');
           }
           
-          return data.choices[0].message.content;
+          const content = data.choices[0].message.content;
+          debugLog(`Получен контент от API: ${content.substring(0, 50)}...`);
+          return content;
         } catch (error) {
           this.handleError(error);
           throw error;
@@ -528,6 +631,7 @@
       
       // Потоковый запрос (для streaming API)
       async sendStreamingRequest(text, systemPrompt, onChunk, logger) {
+        debugLog("Отправка потокового запроса к API...");
         const requestBody = {
           model: this.model,
           messages: [
@@ -543,6 +647,7 @@
         }
         
         try {
+          debugLog("Выполнение потокового запроса...");
           const response = await fetch(this.apiUrl, {
             method: 'POST',
             headers: {
@@ -554,13 +659,18 @@
           
           if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`API ответил с кодом: ${response.status}, ${errorText}`);
+            const errorMsg = `API ответил с кодом: ${response.status}, ${errorText}`;
+            errorLog(errorMsg);
+            throw new Error(errorMsg);
           }
           
           if (!response.body) {
-            throw new Error('ReadableStream не поддерживается в этом браузере');
+            const errorMsg = 'ReadableStream не поддерживается в этом браузере';
+            errorLog(errorMsg);
+            throw new Error(errorMsg);
           }
           
+          debugLog("Потоковый запрос запущен, начинаем чтение данных...");
           const reader = response.body.getReader();
           const decoder = new TextDecoder('utf-8');
           let accumulatedResponse = '';
@@ -570,6 +680,7 @@
             const { done, value } = await reader.read();
             
             if (done) {
+              debugLog("Чтение потока завершено");
               break;
             }
             
@@ -589,6 +700,7 @@
                     accumulatedResponse += contentChunk;
                     
                     // Вызываем колбэк с новым фрагментом текста
+                    debugLog(`Получен фрагмент потока: ${contentChunk}`);
                     onChunk(contentChunk, accumulatedResponse);
                   }
                 } catch (e) {
@@ -598,6 +710,7 @@
             }
           }
           
+          debugLog(`Полный ответ получен, длина: ${accumulatedResponse.length}`);
           return accumulatedResponse;
         } catch (error) {
           this.handleError(error);
@@ -606,7 +719,7 @@
       }
       
       handleError(error) {
-        console.error('Ошибка при обращении к API:', error);
+        errorLog(`Ошибка при обращении к API: ${error.message}`);
       }
     }
 
@@ -615,43 +728,78 @@
      */
     class SpeechSynthesizer {
       constructor() {
+        debugLog("Инициализация синтезатора речи...");
         if (!window.speechSynthesis) {
-          throw new Error('API синтеза речи не поддерживается в вашем браузере');
+          const errorMsg = 'API синтеза речи не поддерживается в вашем браузере';
+          errorLog(errorMsg);
+          throw new Error(errorMsg);
         }
         
         this.synth = window.speechSynthesis;
         this.language = 'ru-RU';
         this.currentSpeech = null;
+        debugLog("Проверка доступных голосов...");
+        
+        // Проверка доступных голосов
+        const voices = this.synth.getVoices();
+        debugLog(`Доступно ${voices.length} голосов`);
+        
+        debugLog("Синтезатор речи создан успешно");
       }
       
       setLanguage(lang) {
+        debugLog(`Установка языка синтеза: ${lang}`);
         this.language = lang;
       }
       
       getVoice() {
+        debugLog("Получение подходящего голоса...");
         const voices = this.synth.getVoices();
+        if (voices.length === 0) {
+          debugLog("Голоса еще не загружены, попытка переполучения...");
+          // Обработка ситуации, когда голоса еще не загружены
+          setTimeout(() => this.synth.getVoices(), 100);
+          return null;
+        }
+        
         const langCode = this.language.split('-')[0];
+        
+        debugLog(`Поиск голоса для языка: ${this.language} (код: ${langCode})`);
         
         // Сначала ищем точное совпадение
         let voice = voices.find(v => v.lang === this.language);
         
         // Если не нашли, ищем по первой части кода языка
         if (!voice) {
+          debugLog(`Точное совпадение не найдено, поиск по коду языка: ${langCode}`);
           voice = voices.find(v => v.lang.startsWith(langCode));
         }
         
         // Если ничего не нашли, возвращаем первый доступный голос
-        return voice || voices[0];
+        if (!voice && voices.length > 0) {
+          debugLog(`Подходящий голос не найден, используется первый доступный: ${voices[0].name}`);
+          return voices[0];
+        }
+        
+        if (voice) {
+          debugLog(`Найден подходящий голос: ${voice.name}`);
+        } else {
+          debugLog("Подходящий голос не найден");
+        }
+        
+        return voice;
       }
       
       speak(text) {
         return new Promise((resolve) => {
           // Если текст пустой, сразу разрешаем промис
           if (!text || text.trim() === '') {
+            debugLog("Пустой текст для синтеза, пропускаем");
             resolve();
             return;
           }
           
+          debugLog(`Синтез речи для текста: "${text.substring(0, 50)}..."`);
           const utterance = new SpeechSynthesisUtterance(text);
           utterance.lang = this.language;
           
@@ -662,9 +810,555 @@
           }
           
           utterance.onend = () => {
+            debugLog("Синтез речи завершен");
             this.currentSpeech = null;
             resolve();
           };
           
           utterance.onerror = (error) => {
-            console.error('Ошибка синтеза речи:',
+            errorLog(`Ошибка синтеза речи: ${error.message || "Неизвестная ошибка"}`);
+            this.currentSpeech = null;
+            resolve();
+          };
+          
+          // Сохраняем текущее высказывание
+          this.currentSpeech = utterance;
+          
+          // Синтезируем речь асинхронно
+          setTimeout(() => {
+            try {
+              this.synth.speak(utterance);
+              debugLog("Начат синтез речи");
+            } catch (error) {
+              errorLog(`Ошибка при запуске синтеза речи: ${error.message}`);
+              resolve();
+            }
+          }, 0);
+        });
+      }
+      
+      // Поочередное воспроизведение нескольких фрагментов текста
+      async speakChunks(chunks) {
+        debugLog(`Синтез речи для ${chunks.length} фрагментов текста`);
+        for (const chunk of chunks) {
+          await this.speak(chunk);
+        }
+      }
+      
+      stop() {
+        if (this.synth.speaking) {
+          debugLog("Остановка синтеза речи");
+          try {
+            this.synth.cancel();
+            this.currentSpeech = null;
+            debugLog("Синтез речи остановлен");
+          } catch (error) {
+            errorLog(`Ошибка при остановке синтеза речи: ${error.message}`);
+          }
+        } else {
+          debugLog("Нет активного синтеза речи для остановки");
+        }
+      }
+    }
+
+    /**
+     * Главный класс бота
+     */
+    class VoiceBot {
+      constructor() {
+        debugLog("Создание экземпляра голосового бота...");
+        
+        try {
+          this.logger = new Logger();
+          this.logger.log('Инициализация компонентов голосового бота...', 'info');
+          
+          this.settings = new Settings();
+          this.logger.log('Настройки инициализированы', 'info');
+          
+          try {
+            this.recognizer = new SpeechRecognizer();
+            this.logger.log('Распознаватель речи инициализирован', 'info');
+          } catch (error) {
+            this.logger.log(`Ошибка инициализации распознавателя речи: ${error.message}`, 'error');
+            this.recognizer = null;
+          }
+          
+          try {
+            this.synthesizer = new SpeechSynthesizer();
+            this.logger.log('Синтезатор речи инициализирован', 'info');
+          } catch (error) {
+            this.logger.log(`Ошибка инициализации синтезатора речи: ${error.message}`, 'error');
+            this.synthesizer = null;
+          }
+          
+          this.aiClient = new AIClient();
+          this.logger.log('AI клиент инициализирован', 'info');
+          
+          this.isActive = false;
+          this.microphoneInitialized = false;
+          
+          // Добавляем текущий этап разговора
+          this.currentStage = 1; // Начальный этап по умолчанию
+          
+          this.logger.log('Компоненты системы успешно созданы', 'info');
+        } catch (error) {
+          errorLog(`Ошибка при создании компонентов бота: ${error.message}`);
+          this.logger.log(`Ошибка инициализации: ${error.message}`, 'error');
+        }
+        
+        // Буфер для накопления текста при потоковой обработке
+        this.currentStreamText = '';
+        this.lastSpeakPromise = Promise.resolve();
+        
+        // Элементы UI
+        this.statusElement = document.getElementById('status-text');
+        this.statusIndicator = document.getElementById('status-indicator');
+        this.toggleButton = document.getElementById('toggle-bot');
+        
+        debugLog("Экземпляр голосового бота создан");
+      }
+      
+      async initialize() {
+        this.logger.log('Начало инициализации системы...', 'info');
+        debugLog("Инициализация голосового бота...");
+        
+        try {
+          // Загрузка настроек
+          debugLog("Загрузка настроек...");
+          this.settings.load();
+          this.logger.log('Настройки загружены', 'info');
+          
+          // Настраиваем API клиент
+          debugLog("Настройка API клиента...");
+          this.aiClient.setApiParams(
+            this.settings.apiUrl, 
+            this.settings.apiKey, 
+            this.settings.model
+          );
+          this.logger.log('API клиент настроен', 'info');
+          
+          // Проверка поддержки потокового API
+          if (this.settings.useStreaming) {
+            debugLog("Проверка поддержки потокового API...");
+            const streamingSupported = await this.aiClient.detectStreamingSupport();
+            this.logger.log(`Поддержка потоковой обработки: ${streamingSupported ? 'Да' : 'Нет'}`, 'info');
+          }
+          
+          // Инициализация микрофона (запрос разрешения)
+          debugLog("Инициализация микрофона...");
+          try {
+            if (this.recognizer) {
+              this.logger.log('Запрос разрешения на использование микрофона...', 'info');
+              await this.recognizer.initialize();
+              this.microphoneInitialized = true;
+              this.logger.log('Микрофон успешно инициализирован', 'info');
+              
+              // Настройка распознавателя речи
+              debugLog("Настройка обработчиков распознавателя речи...");
+              this.recognizer.setLanguage(this.settings.language);
+              this.recognizer.onResult((text) => this.processVoiceInput(text));
+              this.recognizer.onError((error) => {
+                this.logger.log(`Ошибка распознавания: ${error}`, 'error');
+              });
+              this.logger.log('Распознаватель речи настроен', 'info');
+            } else {
+              this.logger.log('Распознаватель речи недоступен', 'error');
+            }
+          } catch (error) {
+            this.microphoneInitialized = false;
+            this.logger.log(`Ошибка инициализации микрофона: ${error.message}`, 'error');
+          }
+          
+          // Настройка синтезатора речи
+          if (this.synthesizer) {
+            debugLog("Настройка синтезатора речи...");
+            this.synthesizer.setLanguage(this.settings.language);
+            this.logger.log('Синтезатор речи настроен', 'info');
+          } else {
+            this.logger.log('Синтезатор речи недоступен', 'error');
+          }
+          
+          this.logger.log('Система инициализирована и готова к работе', 'info');
+          this.updateStatus('Готов к запуску');
+          debugLog("Инициализация голосового бота завершена успешно");
+        } catch (error) {
+          errorLog(`Ошибка при инициализации бота: ${error.message}`);
+          this.logger.log(`Ошибка инициализации: ${error.message}`, 'error');
+          this.updateStatus('Ошибка инициализации');
+        }
+      }
+      
+      // Улучшенный метод определения этапа
+      determineStage(text) {
+        debugLog(`Определение этапа разговора для текста: "${text.substring(0, 50)}..."`);
+        const lowerText = text.toLowerCase();
+        let matchedStages = [];
+        
+        // Собираем все этапы, ключевые слова которых встречаются в тексте
+        for (const stage of this.settings.conversationStages) {
+          for (const keyword of stage.keywords) {
+            if (lowerText.includes(keyword.toLowerCase())) {
+              debugLog(`Найдено ключевое слово "${keyword}" для этапа ${stage.stage_number}`);
+              matchedStages.push(stage);
+              break; // Нашли совпадение для этого этапа, переходим к следующему
+            }
+          }
+        }
+        
+        if (matchedStages.length > 0) {
+          // Выбираем этап с наибольшим номером среди совпавших
+          // Это даст приоритет более поздним этапам разговора
+          matchedStages.sort((a, b) => b.stage_number - a.stage_number);
+          debugLog(`Выбран этап ${matchedStages[0].stage_number} с наивысшим приоритетом`);
+          return matchedStages[0];
+        }
+        
+        // Если не найдено совпадений, возвращаем текущий этап
+        const currentStageObj = this.settings.conversationStages.find(
+          stage => stage.stage_number === this.currentStage
+        ) || this.settings.conversationStages[0];
+        
+        debugLog(`Нет совпадений ключевых слов, остаемся на текущем этапе ${this.currentStage}`);
+        return currentStageObj;
+      }
+      
+      async start() {
+        debugLog("Запуск голосового бота...");
+        if (!this.microphoneInitialized) {
+          this.logger.log('Пытаемся инициализировать микрофон...', 'info');
+          try {
+            await this.recognizer.initialize();
+            this.microphoneInitialized = true;
+            this.logger.log('Микрофон успешно инициализирован', 'info');
+          } catch (error) {
+            this.logger.log(`Невозможно запустить бота: ${error.message}`, 'error');
+            return;
+          }
+        }
+        
+        if (!this.recognizer || !this.synthesizer) {
+          this.logger.log('Невозможно запустить бота: API речи не поддерживаются', 'error');
+          return;
+        }
+        
+        this.isActive = true;
+        
+        // Сбрасываем этап разговора на начальный при каждом запуске
+        this.currentStage = 1;
+        this.logger.log(`Установлен начальный этап разговора: ${this.currentStage}`, 'info');
+        
+        // Воспроизведение приветствия при запуске
+        debugLog("Воспроизведение приветствия...");
+        await this.speakGreeting();
+        
+        // Начинаем прослушивание
+        debugLog("Запуск прослушивания...");
+        this.recognizer.start();
+        this.logger.log('Голосовой бот активирован', 'info');
+        this.updateStatus('Активен - Прослушивание...');
+        
+        // Обновление UI
+        if (this.toggleButton) {
+          this.toggleButton.textContent = 'Остановить бота';
+          this.toggleButton.classList.add('active');
+        }
+        
+        if (this.statusIndicator) {
+          this.statusIndicator.classList.add('active');
+        }
+        
+        debugLog("Голосовой бот успешно запущен");
+      }
+      
+      stop() {
+        debugLog("Остановка голосового бота...");
+        this.isActive = false;
+        
+        if (this.recognizer) {
+          this.recognizer.stop();
+        }
+        
+        if (this.synthesizer) {
+          this.synthesizer.stop();
+        }
+        
+        this.logger.log('Голосовой бот деактивирован', 'info');
+        this.updateStatus('Остановлен');
+        
+        // Обновление UI
+        if (this.toggleButton) {
+          this.toggleButton.textContent = 'Запустить бота';
+          this.toggleButton.classList.remove('active');
+        }
+        
+        if (this.statusIndicator) {
+          this.statusIndicator.classList.remove('active');
+        }
+        
+        debugLog("Голосовой бот остановлен");
+      }
+      
+      updateStatus(statusText) {
+        debugLog(`Обновление статуса: ${statusText}`);
+        if (this.statusElement) {
+          this.statusElement.textContent = `Статус: ${statusText}`;
+        }
+      }
+      
+      // Воспроизведение приветственного сообщения
+      async speakGreeting() {
+        if (this.settings.greetingText && this.synthesizer) {
+          this.logger.log(`Воспроизведение приветствия: ${this.settings.greetingText}`, 'info');
+          await this.synthesizer.speak(this.settings.greetingText);
+        } else {
+          debugLog("Пропуск приветствия (пустой текст или нет синтезатора)");
+        }
+      }
+      
+      async processVoiceInput(text) {
+        this.logger.log(`Распознанный текст: ${text}`, 'input');
+        this.updateStatus('Обработка запроса...');
+        
+        try {
+          if (!this.settings.apiKey) {
+            throw new Error('API ключ не настроен. Пожалуйста, укажите API ключ в настройках.');
+          }
+          
+          // Останавливаем распознавание на время обработки запроса
+          if (this.recognizer) {
+            this.recognizer.stop();
+          }
+          
+          // Проверяем специальную команду для перехода между этапами
+          if (text.toLowerCase().includes("переход") && text.toLowerCase().includes("этап")) {
+            // Извлекаем номер этапа из текста (например, "переход на этап 3")
+            const match = text.match(/этап\s+(\d)/i);
+            if (match && match[1]) {
+              const requestedStage = parseInt(match[1]);
+              if (requestedStage >= 1 && requestedStage <= 5) {
+                const stageObj = this.settings.conversationStages.find(s => s.stage_number === requestedStage);
+                if (stageObj) {
+                  this.currentStage = requestedStage;
+                  this.logger.log(`Принудительный переход на этап ${requestedStage}: ${stageObj.transition_text}`, 'info');
+                  await this.synthesizer.speak(stageObj.transition_text);
+                  
+                  if (this.isActive && this.recognizer) {
+                    this.updateStatus('Активен - Прослушивание...');
+                    this.recognizer.start();
+                  }
+                  return;
+                }
+              }
+            }
+          }
+          
+          // Определяем этап разговора на основе распознанного текста
+          const detectedStage = this.determineStage(text);
+          const previousStage = this.currentStage;
+          
+          // Если этап изменился, показываем переходный текст
+          if (detectedStage.stage_number !== previousStage) {
+            this.currentStage = detectedStage.stage_number;
+            this.logger.log(`Переход на этап ${this.currentStage}: ${detectedStage.transition_text}`, 'info');
+            
+            // Воспроизводим переходный текст
+            await this.synthesizer.speak(detectedStage.transition_text);
+          }
+          
+          // Сбрасываем буфер текущего потокового текста
+          this.currentStreamText = '';
+          
+          // Получаем текущий этап для формирования промпта
+          const currentStageObj = this.settings.conversationStages.find(
+            stage => stage.stage_number === this.currentStage
+          );
+          
+          // Используем промпт текущего этапа или стандартный промпт, если этап не найден
+          const systemPrompt = currentStageObj ? currentStageObj.speech_prompt : this.settings.systemPrompt;
+          
+          this.logger.log(`Используем промпт этапа ${this.currentStage}: ${systemPrompt}`, 'info');
+          
+          // Выбираем способ отправки запроса в зависимости от поддержки потоковой обработки
+          let response;
+          
+          if (this.settings.useStreaming && this.aiClient.supportStreaming) {
+            this.logger.log('Отправка потокового запроса к API...', 'info');
+            
+            // Используем потоковый запрос с промптом текущего этапа
+            response = await this.aiClient.sendStreamingRequest(
+              text, 
+              systemPrompt,
+              (chunk, fullText) => this.handleStreamingChunk(chunk, fullText),
+              this.logger
+            );
+            
+            // Потоковый ответ уже обработан через колбэк
+          } else {
+            // Используем обычный запрос с промптом текущего этапа
+            this.logger.log('Отправка запроса к API...', 'info');
+            response = await this.aiClient.sendRequest(
+              text, 
+              systemPrompt,
+              this.logger
+            );
+            
+            // Обработка полного ответа
+            await this.handleAIResponse(response);
+          }
+          
+        } catch (error) {
+          this.logger.log(`Ошибка: ${error.message}`, 'error');
+          this.updateStatus('Ошибка - перезапуск прослушивания...');
+          
+          // Возобновляем прослушивание после ошибки
+          if (this.isActive && this.recognizer) {
+            setTimeout(() => this.recognizer.start(), 1000);
+          }
+        }
+      }
+      
+      // Обработка фрагмента потокового ответа
+      async handleStreamingChunk(chunk, fullText) {
+        this.logger.log(`Получен фрагмент: ${chunk}`, 'output');
+        
+        // Сохраняем последний промис, чтобы знать, когда завершилось последнее воспроизведение
+        this.lastSpeakPromise = this.lastSpeakPromise.then(() => {
+          return this.synthesizer.speak(chunk);
+        });
+        
+        // Если это последний фрагмент, нужно возобновить прослушивание
+        if (chunk.includes('.') || chunk.includes('!') || chunk.includes('?')) {
+          this.lastSpeakPromise.then(() => {
+            if (this.isActive && this.recognizer) {
+              this.updateStatus('Активен - Прослушивание...');
+              this.recognizer.start();
+            }
+          });
+        }
+      }
+      
+      async handleAIResponse(response) {
+        this.logger.log(`Ответ AI: ${response}`, 'output');
+        this.updateStatus('Воспроизведение ответа...');
+        
+        try {
+          await this.synthesizer.speak(response);
+          this.logger.log('Воспроизведение ответа завершено', 'info');
+          
+          // Возобновляем прослушивание после завершения воспроизведения
+          if (this.isActive && this.recognizer) {
+            this.updateStatus('Активен - Прослушивание...');
+            this.recognizer.start();
+          }
+        } catch (error) {
+          this.logger.log(`Ошибка воспроизведения: ${error.message}`, 'error');
+          
+          // Возобновляем прослушивание после ошибки
+          if (this.isActive && this.recognizer) {
+            this.updateStatus('Активен - Прослушивание...');
+            this.recognizer.start();
+          }
+        }
+      }
+      
+      updateSettings() {
+        debugLog("Обновление настроек из UI...");
+        const success = this.settings.updateFromUI();
+        
+        if (success) {
+          this.settings.save();
+          
+          this.aiClient.setApiParams(
+            this.settings.apiUrl, 
+            this.settings.apiKey, 
+            this.settings.model
+          );
+          
+          // Обновляем проверку поддержки потоковой обработки
+          if (this.settings.useStreaming) {
+            this.aiClient.detectStreamingSupport().then(supported => {
+              this.logger.log(`Поддержка потоковой обработки: ${supported ? 'Да' : 'Нет'}`, 'info');
+            });
+          }
+          
+          if (this.recognizer) {
+            this.recognizer.setLanguage(this.settings.language);
+          }
+          
+          if (this.synthesizer) {
+            this.synthesizer.setLanguage(this.settings.language);
+          }
+          
+          this.logger.log('Настройки успешно обновлены', 'info');
+        } else {
+          this.logger.log('Ошибка при обновлении настроек: неверный формат', 'error');
+        }
+        
+        return success;
+      }
+      
+      resetSettings() {
+        debugLog("Сброс настроек...");
+        this.settings.reset();
+        this.logger.log('Настройки сброшены до значений по умолчанию', 'info');
+      }
+    }
+
+    // Инициализация приложения
+    document.addEventListener('DOMContentLoaded', async () => {
+      debugLog("DOM загружен, начало инициализации приложения");
+      
+      try {
+        // Отображаем версию в консоли
+        console.log("Голосовой робот-демонстратор v1.3 запущен");
+        
+        // Создаем экземпляр голосового бота
+        debugLog("Создание экземпляра VoiceBot");
+        const voiceBot = new VoiceBot();
+        
+        // Инициализация системы
+        debugLog("Запуск инициализации VoiceBot");
+        await voiceBot.initialize();
+        debugLog("Инициализация VoiceBot завершена");
+        
+        // Обработчики событий UI
+        debugLog("Настройка обработчиков событий UI");
+        document.getElementById('toggle-bot').addEventListener('click', () => {
+          debugLog("Нажата кнопка переключения бота");
+          if (voiceBot.isActive) {
+            voiceBot.stop();
+          } else {
+            voiceBot.start();
+          }
+        });
+        
+        document.getElementById('save-settings').addEventListener('click', () => {
+          debugLog("Нажата кнопка сохранения настроек");
+          voiceBot.updateSettings();
+        });
+        
+        document.getElementById('reset-settings').addEventListener('click', () => {
+          debugLog("Нажата кнопка сброса настроек");
+          voiceBot.resetSettings();
+        });
+        
+        document.getElementById('clear-log').addEventListener('click', () => {
+          debugLog("Нажата кнопка очистки лога");
+          voiceBot.logger.clear();
+        });
+        
+        debugLog("Все обработчики событий настроены");
+        debugLog("Инициализация приложения завершена успешно");
+      } catch (error) {
+        errorLog(`Критическая ошибка при инициализации приложения: ${error.message}`);
+        // Отображаем ошибку в UI
+        const statusElement = document.getElementById('status-text');
+        if (statusElement) {
+          statusElement.textContent = `Статус: Ошибка - ${error.message}`;
+          statusElement.style.color = 'red';
+        }
+      }
+    });
+  </script>
+</body>
+</html>
